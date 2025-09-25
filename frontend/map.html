@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spatial Data Map - Vibe Coding App</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+        
+        #map {
+            height: 100vh;
+            width: 100%;
+        }
+        
+        .control-panel {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 1000;
+            min-width: 200px;
+            max-width: 220px;
+        }
+        
+        .control-panel h3 {
+            margin: 0 0 8px 0;
+            color: #333;
+            font-size: 14px;
+        }
+        
+        .control-panel select, .control-panel button, .control-panel input {
+            width: 100%;
+            padding: 6px;
+            margin: 3px 0;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+        
+        .control-panel input[type="color"] {
+            height: 32px;
+            padding: 2px;
+            cursor: pointer;
+        }
+        
+        .control-panel label {
+            font-size: 11px;
+            font-weight: 500;
+            color: #666;
+            margin: 0;
+        }
+        
+        .control-panel button {
+            background: #007cba;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 500;
+            padding: 6px 8px;
+        }
+        
+        .control-panel button:hover {
+            background: #005a87;
+        }
+        
+        .control-panel button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .info {
+            margin-top: 8px;
+            padding: 6px;
+            background: #f0f0f0;
+            border-radius: 3px;
+            font-size: 10px;
+            line-height: 1.3;
+        }
+        
+        .loading {
+            color: #007cba;
+        }
+        
+        .error {
+            color: #d32f2f;
+        }
+        
+        .success {
+            color: #2e7d32;
+        }
+        
+        /* Bottom banner styling */
+        .bottom-banner {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 20px;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            z-index: 1000;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        .counter-item {
+            text-align: center;
+            flex: 1;
+        }
+        
+        .counter-label {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        
+        .counter-value {
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+        }
+        
+        .counter-separator {
+            width: 2px;
+            height: 40px;
+            background: rgba(255,255,255,0.3);
+            margin: 0 20px;
+        }
+        
+        /* Adjust map height to account for banner */
+        #map {
+            height: calc(100vh - 80px);
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    
+    <!-- Bottom banner with counters -->
+    <div class="bottom-banner">
+        <div class="counter-item">
+            <div class="counter-label">Total Features</div>
+            <div class="counter-value" id="totalFeatures">0</div>
+        </div>
+        <div class="counter-separator"></div>
+        <div class="counter-item">
+            <div class="counter-label">Active Sessions</div>
+            <div class="counter-value" id="activeSessions">0</div>
+        </div>
+    </div>
+    
+    <div class="control-panel">
+        <h3>Spatial Data Viewer</h3>
+        
+        <label for="tableSelect">Table:</label>
+        <select id="tableSelect">
+            <option value="">Loading...</option>
+        </select>
+        
+        <label for="geometryColumn">Geometry:</label>
+        <select id="geometryColumn">
+            <option value="geom">geom</option>
+        </select>
+        
+        <label for="provinceSelect">Province Filter:</label>
+        <select id="provinceSelect">
+            <option value="">All Provinces</option>
+        </select>
+        
+        <label for="limitInput">Limit:</label>
+        <input type="number" id="limitInput" value="1000" min="1" max="10000">
+        
+        <label for="colorPicker">Geometry Color:</label>
+        <input type="color" id="colorPicker" value="#007cba">
+        
+        <button id="loadDataBtn" onclick="loadSpatialData()" disabled>Load Data</button>
+        <button id="clearLayersBtn" onclick="clearAllLayers()" style="background: #d32f2f; margin-top: 5px;">Clear All Layers</button>
+        
+        <div id="info" class="info">
+            <div>Select table and click "Load Data" to visualize spatial data. Filter by Canadian provinces. Previous layers are preserved.</div>
+        </div>
+    </div>
+
+    <!-- Leaflet JavaScript -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <script>
+        // Initialize map
+        const map = L.map('map').setView([0, 0], 2);
+        
+        // Add OpenStreetMap tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+        
+        // Global variables
+        let currentLayer = null;
+        let spatialTables = [];
+        let availableProvinces = [];
+        let counterInterval = null;
+        let allLayers = []; // Array to store all loaded layers
+        
+        // Canadian provinces list
+        const CANADIAN_PROVINCES = [
+            'Alberta',
+            'British Columbia',
+            'Manitoba',
+            'New Brunswick',
+            'Newfoundland and Labrador',
+            'Northwest Territories',
+            'Nova Scotia',
+            'Nunavut',
+            'Ontario',
+            'Prince Edward Island',
+            'Quebec',
+            'Saskatchewan',
+            'Yukon'
+        ];
+        
+        // Counter functions
+        function generateRandomNumber(min, max) {
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+        
+        function updateCounters() {
+            // Update Total Features counter (simulate feature count)
+            const totalFeatures = generateRandomNumber(150, 2500);
+            document.getElementById('totalFeatures').textContent = totalFeatures.toLocaleString();
+            
+            // Update Active Sessions counter (simulate user sessions)
+            const activeSessions = generateRandomNumber(5, 45);
+            document.getElementById('activeSessions').textContent = activeSessions;
+        }
+        
+        function startCounterUpdates() {
+            // Update counters immediately
+            updateCounters();
+            
+            // Update counters every 3-7 seconds with random interval
+            function scheduleNextUpdate() {
+                const nextInterval = generateRandomNumber(3000, 7000);
+                counterInterval = setTimeout(() => {
+                    updateCounters();
+                    scheduleNextUpdate();
+                }, nextInterval);
+            }
+            
+            scheduleNextUpdate();
+        }
+        
+        function stopCounterUpdates() {
+            if (counterInterval) {
+                clearTimeout(counterInterval);
+                counterInterval = null;
+            }
+        }
+        
+        // Clear all layers from the map
+        function clearAllLayers() {
+            allLayers.forEach(layer => {
+                map.removeLayer(layer);
+            });
+            allLayers = [];
+            currentLayer = null;
+            updateInfo('All layers cleared from the map.', 'success');
+        }
+        
+        // Load available spatial tables
+        async function loadSpatialTables() {
+            try {
+                const response = await fetch('/api/spatial/tables');
+                const data = await response.json();
+                spatialTables = data.tables;
+                
+                const tableSelect = document.getElementById('tableSelect');
+                const geometrySelect = document.getElementById('geometryColumn');
+                
+                // Clear existing options
+                tableSelect.innerHTML = '';
+                geometrySelect.innerHTML = '';
+                
+                if (spatialTables.length === 0) {
+                    tableSelect.innerHTML = '<option value="">No spatial tables found</option>';
+                    updateInfo('No spatial tables found in the database.', 'error');
+                } else {
+                    // Add table options
+                    tableSelect.innerHTML = '<option value="">Select a table...</option>';
+                    spatialTables.forEach(table => {
+                        const option = document.createElement('option');
+                        option.value = table.tablename;
+                        option.textContent = `${table.tablename} (${table.geometry_type})`;
+                        option.dataset.geometryColumn = table.geometry_column;
+                        tableSelect.appendChild(option);
+                    });
+                    
+                    // Enable load button
+                    document.getElementById('loadDataBtn').disabled = false;
+                    updateInfo('Select a table to load spatial data.', 'success');
+                }
+            } catch (error) {
+                console.error('Error loading spatial tables:', error);
+                updateInfo('Error loading spatial tables: ' + error.message, 'error');
+            }
+        }
+        
+        // Load provinces for selected table
+        function loadProvinces(tableName) {
+            // Use predefined Canadian provinces list
+            availableProvinces = [...CANADIAN_PROVINCES];
+            
+            const provinceSelect = document.getElementById('provinceSelect');
+            provinceSelect.innerHTML = '<option value="">All Provinces</option>';
+            
+            availableProvinces.forEach(province => {
+                const option = document.createElement('option');
+                option.value = province;
+                option.textContent = province;
+                provinceSelect.appendChild(option);
+            });
+            
+            updateInfo(`Loaded ${availableProvinces.length} Canadian provinces for filtering.`, 'success');
+        }
+        
+        // Handle table selection change
+        document.getElementById('tableSelect').addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            const geometryColumn = selectedOption.dataset.geometryColumn || 'geom';
+            
+            // Update geometry column select
+            const geometrySelect = document.getElementById('geometryColumn');
+            geometrySelect.innerHTML = `<option value="${geometryColumn}">${geometryColumn}</option>`;
+            
+            // Load provinces for the selected table
+            if (this.value) {
+                loadProvinces(this.value);
+            } else {
+                // Clear provinces if no table selected
+                const provinceSelect = document.getElementById('provinceSelect');
+                provinceSelect.innerHTML = '<option value="">All Provinces</option>';
+                availableProvinces = [];
+            }
+        });
+        
+        // Handle color picker change
+        document.getElementById('colorPicker').addEventListener('change', function() {
+            const selectedColor = this.value;
+            
+            // Update most recent layer color if it exists
+            if (currentLayer) {
+                currentLayer.setStyle({
+                    color: selectedColor,
+                    weight: 2,
+                    opacity: 0.8,
+                    fillOpacity: 0.3
+                });
+                updateInfo(`Most recent layer color updated to ${selectedColor}`, 'success');
+            }
+        });
+        
+        // Load spatial data
+        async function loadSpatialData() {
+            const tableName = document.getElementById('tableSelect').value;
+            const geometryColumn = document.getElementById('geometryColumn').value;
+            const provinceFilter = document.getElementById('provinceSelect').value;
+            const limit = document.getElementById('limitInput').value;
+            const selectedColor = document.getElementById('colorPicker').value;
+            
+            if (!tableName) {
+                updateInfo('Please select a table first.', 'error');
+                return;
+            }
+            
+            try {
+                updateInfo('Loading spatial data...', 'loading');
+                
+                // Don't clear existing layers - we want to keep them
+                
+                // Build query parameters
+                const params = new URLSearchParams({
+                    geometry_column: geometryColumn,
+                    limit: limit
+                });
+                
+                if (provinceFilter) {
+                    params.append('province_filter', provinceFilter);
+                    params.append('province_column', 'province');
+                }
+                
+                // Fetch GeoJSON data
+                const response = await fetch(`/api/spatial/geojson/${tableName}?${params.toString()}`);
+                const geojsonData = await response.json();
+                
+                if (geojsonData.features && geojsonData.features.length > 0) {
+                    // Create a unique layer name
+                    const layerName = `${tableName}${provinceFilter ? ` (${provinceFilter})` : ''}`;
+                    
+                    // Add GeoJSON layer to map
+                    const newLayer = L.geoJSON(geojsonData, {
+                        style: function(feature) {
+                            return {
+                                color: selectedColor,
+                                weight: 2,
+                                opacity: 0.8,
+                                fillOpacity: 0.3
+                            };
+                        },
+                        onEachFeature: function(feature, layer) {
+                            // Add popup with feature properties
+                            let popupContent = '<div><strong>Properties:</strong><br>';
+                            for (const [key, value] of Object.entries(feature.properties)) {
+                                popupContent += `${key}: ${value}<br>`;
+                            }
+                            popupContent += '</div>';
+                            layer.bindPopup(popupContent);
+                        }
+                    });
+                    
+                    // Add layer to map and store in array
+                    newLayer.addTo(map);
+                    newLayer.layerName = layerName; // Store name for reference
+                    allLayers.push(newLayer);
+                    currentLayer = newLayer; // Keep reference to most recent layer
+                    
+                    // Fit map to all layers bounds
+                    if (allLayers.length === 1) {
+                        // First layer - fit to its bounds
+                        map.fitBounds(newLayer.getBounds());
+                    } else {
+                        // Multiple layers - fit to combined bounds
+                        const group = new L.featureGroup(allLayers);
+                        map.fitBounds(group.getBounds());
+                    }
+                    
+                    const filterText = provinceFilter ? ` (filtered by ${provinceFilter})` : '';
+                    updateInfo(`Added ${geojsonData.features.length} features from ${tableName}${filterText}. Total layers: ${allLayers.length}`, 'success');
+                } else {
+                    updateInfo('No features found in the selected table.', 'error');
+                }
+                
+            } catch (error) {
+                console.error('Error loading spatial data:', error);
+                updateInfo('Error loading spatial data: ' + error.message, 'error');
+            }
+        }
+        
+        // Update info display
+        function updateInfo(message, type = 'info') {
+            const infoDiv = document.getElementById('info');
+            infoDiv.innerHTML = `<div class="${type}">${message}</div>`;
+        }
+        
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            loadSpatialTables();
+            startCounterUpdates();
+        });
+        
+        // Clean up when page is unloaded
+        window.addEventListener('beforeunload', function() {
+            stopCounterUpdates();
+        });
+    </script>
+</body>
+</html>

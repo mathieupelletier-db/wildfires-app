@@ -1,40 +1,43 @@
-# 2025 Vibe Coding Todo App
+# 2025 Vibe Coding App
 
-A modern, full-featured todo list application built with FastAPI and Databricks Lakebase integration. Features a beautiful, responsive UI with real-time task management.
+A modern web application built with FastAPI featuring spatial data visualization capabilities. Integrates with PostGIS for geospatial data management and provides interactive mapping functionality.
 
 ## Technologies Used
 
 -   **FastAPI**: High-performance web framework for building APIs
 -   **Uvicorn**: ASGI server for running the FastAPI application
 -   **Python-dotenv**: Environment variable management
--   **Databricks SDK**: Integration with Databricks services and Lakebase
--   **PostgreSQL**: Database backend via psycopg2
+-   **PostGIS**: Spatial database extension for PostgreSQL
+-   **GeoAlchemy2**: SQLAlchemy extension for spatial data
+-   **Leaflet**: Interactive mapping library
+-   **psycopg2**: PostgreSQL database adapter
 -   **HTML5/CSS3**: Modern, responsive frontend design
 
 ## Features
 
+### 🗺️ Spatial Data Visualization
+
+-   **Interactive Maps**: Leaflet-based mapping with OpenStreetMap tiles
+-   **PostGIS Integration**: Direct connection to PostGIS spatial databases
+-   **GeoJSON Support**: Native GeoJSON data format for web mapping
+-   **Dynamic Table Discovery**: Automatically discover spatial tables in your database
+-   **Feature Popups**: Click features to view their properties
+-   **Responsive Design**: Works on desktop, tablet, and mobile devices
+
 ### 🎯 Core Functionality
 
--   **Create Tasks**: Add new todo items with title and description
--   **Mark Complete**: Toggle task completion status with checkboxes
--   **Edit Tasks**: Click any task to open detailed editing modal
--   **Delete Tasks**: Remove tasks permanently
--   **Tab Navigation**: Switch between "Active Tasks" and "All Tasks" views
+-   **Spatial Data Loading**: Load and visualize spatial data from PostGIS tables
+-   **Table Management**: Browse available spatial tables and geometry columns
+-   **Data Filtering**: Limit number of features displayed for performance
+-   **Auto-fit Bounds**: Automatically zoom to show all loaded data
+-   **Real-time Updates**: Dynamic data loading without page refreshes
 
 ### 🎨 User Experience
 
--   **Beautiful Design**: Modern gradient background with clean card-based layout
--   **Responsive**: Works perfectly on desktop, tablet, and mobile
--   **Real-time Updates**: Instant UI updates without page refreshes
--   **Loading States**: Visual feedback during API operations
+-   **Beautiful Design**: Clean, modern interface with intuitive controls
+-   **Loading States**: Visual feedback during data operations
 -   **Error Handling**: User-friendly error messages and recovery
-
-### 🔒 Data Security
-
--   **Schema Isolation**: User-specific database schemas based on email
--   **Email Derivation**: Automatic schema creation from user identity
--   **Input Validation**: Client and server-side validation
--   **XSS Protection**: HTML escaping for user-generated content
+-   **Control Panel**: Easy-to-use interface for data selection and configuration
 
 ## Getting Started
 
@@ -47,13 +50,12 @@ A modern, full-featured todo list application built with FastAPI and Databricks 
 2. Set up environment variables:
 
     - Copy `example.env` to `.env`
-    - Fill in your actual Databricks credentials:
-        - `DATABRICKS_HOST`
-        - `DATABRICKS_CLIENT_ID`
-        - `DATABRICKS_CLIENT_SECRET`
-        - `LAKEBASE_INSTANCE_NAME`
-        - `LAKEBASE_DB_NAME`
-        - `MY_EMAIL` (your email for schema derivation)
+    - Fill in your PostGIS database credentials:
+        - `POSTGRES_HOST` (default: localhost)
+        - `POSTGRES_PORT` (default: 5432)
+        - `POSTGRES_DB` (your database name)
+        - `POSTGRES_USER` (your username)
+        - `POSTGRES_PASSWORD` (your password)
 
 3. Run the application:
 
@@ -62,52 +64,57 @@ A modern, full-featured todo list application built with FastAPI and Databricks 
     ```
 
 4. Open your browser to `http://localhost:8000`
+5. Click "View Spatial Data Map" to access the mapping interface
 
 ## API Endpoints
 
-### Todo Management
+### Spatial Data
 
--   `POST /api/todos` - Create a new todo item
--   `GET /api/todos` - List todo items (with optional `include_completed` parameter)
--   `GET /api/todos/{id}` - Get a specific todo item
--   `PUT /api/todos/{id}` - Update a todo item
--   `PUT /api/todos/{id}/status` - Change todo status
--   `DELETE /api/todos/{id}` - Delete a todo item
+-   `GET /api/spatial/tables` - Get list of tables with geometry columns
+-   `GET /api/spatial/geojson/{table_name}` - Get spatial data as GeoJSON
+-   `GET /api/spatial/bounds/{table_name}` - Get bounding box for a spatial table
 
-### System
+### Web Pages
 
--   `GET /health` - Health check endpoint
+-   `GET /` - Main application page
+-   `GET /map` - Interactive spatial data map
 
 ## Database Architecture
 
-### Schema Derivation
+### PostGIS Integration
 
-The app automatically creates user-specific database schemas based on email addresses:
+The app connects to PostGIS-enabled PostgreSQL databases to access spatial data:
 
--   Email: `john.doe@company.com` → Schema: `john_doe`
--   Tables are created as `{schema}.vibe_coding_lists`
+-   **Spatial Tables**: Automatically discovers tables with geometry/geography columns
+-   **GeoJSON Conversion**: Converts PostGIS spatial data to GeoJSON for web mapping
+-   **Connection Management**: Singleton pattern with automatic connection refresh
+-   **Performance**: Optimized queries with configurable feature limits
 
-### Connection Management
+### Spatial Data Support
 
--   **Singleton Pattern**: Efficient connection pooling with automatic token refresh
--   **OAuth Integration**: Seamless Databricks authentication
--   **Token Refresh**: Automatic renewal every 59 minutes
--   **Connection Pooling**: Optimized database connections
+-   **Geometry Types**: Supports all PostGIS geometry types (Point, LineString, Polygon, etc.)
+-   **Coordinate Systems**: Handles various coordinate reference systems
+-   **Spatial Queries**: Leverages PostGIS spatial functions for data processing
+-   **Bounds Calculation**: Automatic calculation of data extents for map fitting
 
 ### Security Considerations
 
 ⚠️ **SECURITY WARNING**: This demo uses f-string SQL queries for simplicity. In production, always use parameterized queries to prevent SQL injection attacks.
 
-## Database Schema
+## Usage Examples
+
+### Sample PostGIS Table
 
 ```sql
-CREATE TABLE IF NOT EXISTS vibe_coding_lists (
-    id serial primary key,
-    user_email TEXT NOT NULL,
-    title TEXT NOT NULL,
-    description TEXT,
-    status TEXT NOT NULL DEFAULT 'pending',
-    created_at TIMESTAMP NOT NULL DEFAULT now(),
-    updated_at TIMESTAMP NOT NULL DEFAULT now()
+-- Example spatial table
+CREATE TABLE sample_points (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100),
+    geom GEOMETRY(POINT, 4326)
 );
+
+-- Insert sample data
+INSERT INTO sample_points (name, geom) VALUES 
+('Point 1', ST_GeomFromText('POINT(-74.006 40.7128)', 4326)),
+('Point 2', ST_GeomFromText('POINT(-73.9857 40.7484)', 4326));
 ```
