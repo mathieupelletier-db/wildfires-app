@@ -57,6 +57,24 @@ async def read_map():
     """Serve the map page"""
     return FileResponse("frontend/map.html")
 
+@app.get("/api/wildfires/count")
+async def get_wildfires_count(province_filter: str = ""):
+    """Get count of wildfires with optional province filtering"""
+    try:
+        count = spatial_service.get_wildfires_count(province_filter=province_filter)
+        return {"count": count}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/wildfires/active/count")
+async def get_active_wildfires_count(province_filter: str = ""):
+    """Get count of active wildfires (near tracks) with optional province filtering"""
+    try:
+        count = spatial_service.get_active_wildfires_count(province_filter=province_filter)
+        return {"count": count}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

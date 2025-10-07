@@ -151,6 +151,38 @@ class SpatialService:
             }
         return {'minx': -180, 'miny': -90, 'maxx': 180, 'maxy': 90}
     
+    def get_wildfires_count(self, province_filter: str = '') -> int:
+        """Get count of wildfires with optional province filtering"""
+        where_clause = ""
+        if province_filter:
+            where_clause = f"WHERE properties->>'Province' = '{province_filter}'"
+        
+        sql = f"""
+        SELECT COUNT(*) as count
+        FROM wildfires
+        {where_clause};
+        """
+        result = self.query(sql)
+        if result and result[0]:
+            return int(result[0]['count'])
+        return 0
+    
+    def get_active_wildfires_count(self, province_filter: str = '') -> int:
+        """Get count of active wildfires (wildfires near tracks) with optional province filtering"""
+        where_clause = ""
+        if province_filter:
+            where_clause = f"WHERE w.properties->>'Province' = '{province_filter}'"
+        
+        sql = f"""
+        SELECT COUNT(*) as count
+        FROM fire_near_track ft
+        JOIN wildfires w ON w.id = ft.wid
+        {where_clause};
+        """
+        result = self.query(sql)
+        if result and result[0]:
+            return int(result[0]['count'])
+        return 0
 
 # Singleton instance
 spatial_service = SpatialService()

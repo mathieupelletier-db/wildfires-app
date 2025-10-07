@@ -156,13 +156,13 @@
     <!-- Bottom banner with counters -->
     <div class="bottom-banner">
         <div class="counter-item">
-            <div class="counter-label">Total Features</div>
-            <div class="counter-value" id="totalFeatures">0</div>
+            <div class="counter-label">Total Wildfires</div>
+            <div class="counter-value" id="totalWildfires">0</div>
         </div>
         <div class="counter-separator"></div>
         <div class="counter-item">
-            <div class="counter-label">Active Sessions</div>
-            <div class="counter-value" id="activeSessions">0</div>
+            <div class="counter-label">Near Tracks</div>
+            <div class="counter-value" id="activeWildfires">0</div>
         </div>
     </div>
     
@@ -214,7 +214,6 @@
         let currentLayer = null;
         let spatialTables = [];
         let availableProvinces = [];
-        let counterInterval = null;
         let allLayers = []; // Array to store all loaded layers
         
         // Canadian provinces list
@@ -235,42 +234,33 @@
         ];
         
         // Counter functions
-        function generateRandomNumber(min, max) {
-            return Math.floor(Math.random() * (max - min + 1)) + min;
-        }
-        
-        function updateCounters() {
-            // Update Total Features counter (simulate feature count)
-            const totalFeatures = generateRandomNumber(150, 2500);
-            document.getElementById('totalFeatures').textContent = totalFeatures.toLocaleString();
-            
-            // Update Active Sessions counter (simulate user sessions)
-            const activeSessions = generateRandomNumber(5, 45);
-            document.getElementById('activeSessions').textContent = activeSessions;
-        }
-        
-        function startCounterUpdates() {
-            // Update counters immediately
-            updateCounters();
-            
-            // Update counters every 3-7 seconds with random interval
-            function scheduleNextUpdate() {
-                const nextInterval = generateRandomNumber(3000, 7000);
-                counterInterval = setTimeout(() => {
-                    updateCounters();
-                    scheduleNextUpdate();
-                }, nextInterval);
-            }
-            
-            scheduleNextUpdate();
-        }
-        
-        function stopCounterUpdates() {
-            if (counterInterval) {
-                clearTimeout(counterInterval);
-                counterInterval = null;
+        async function updateWildfiresCount(provinceFilter = '') {
+            // Fetch actual wildfires count from API
+            try {
+                const params = provinceFilter ? `?province_filter=${encodeURIComponent(provinceFilter)}` : '';
+                const response = await fetch(`/api/wildfires/count${params}`);
+                const data = await response.json();
+                document.getElementById('totalWildfires').textContent = data.count.toLocaleString();
+            } catch (error) {
+                console.error('Error fetching wildfires count:', error);
+                document.getElementById('totalWildfires').textContent = '0';
             }
         }
+        
+        async function updateActiveWildfiresCount(provinceFilter = '') {
+            // Fetch actual active wildfires count (wildfires near tracks) from API
+            try {
+                const params = provinceFilter ? `?province_filter=${encodeURIComponent(provinceFilter)}` : '';
+                const response = await fetch(`/api/wildfires/active/count${params}`);
+                const data = await response.json();
+                document.getElementById('activeWildfires').textContent = data.count.toLocaleString();
+            } catch (error) {
+                console.error('Error fetching active wildfires count:', error);
+                document.getElementById('activeWildfires').textContent = '0';
+            }
+        }
+        
+        // Counter update functions removed - now using real-time database queries
         
         // Clear all layers from the map
         function clearAllLayers() {
@@ -356,6 +346,13 @@
                 provinceSelect.innerHTML = '<option value="">All Provinces</option>';
                 availableProvinces = [];
             }
+        });
+        
+        // Handle province selection change - update both wildfires counters
+        document.getElementById('provinceSelect').addEventListener('change', function() {
+            const provinceFilter = this.value;
+            updateWildfiresCount(provinceFilter);
+            updateActiveWildfiresCount(provinceFilter);
         });
         
         // Handle color picker change
@@ -469,12 +466,8 @@
         // Initialize the application
         document.addEventListener('DOMContentLoaded', function() {
             loadSpatialTables();
-            startCounterUpdates();
-        });
-        
-        // Clean up when page is unloaded
-        window.addEventListener('beforeunload', function() {
-            stopCounterUpdates();
+            updateWildfiresCount(); // Load initial wildfires count
+            updateActiveWildfiresCount(); // Load initial active wildfires count
         });
     </script>
 </body>
