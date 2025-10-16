@@ -15,7 +15,7 @@ local_service_principal_name = 'local-service-principal'
 group_name = '2025_vibe_coding'
 instance_name = 'mpelletier-demo'
 LAKEBASE_DB_NAME = 'databricks_postgres'
-user_email = 'mathieu.pelletier@databricks.com'
+user_email = 'dc133177-595b-4666-b8ec-175706b5ca6b'
 
 # Create workspace client
 w = WorkspaceClient(profile="adb-984752964297111")
