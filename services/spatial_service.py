@@ -13,9 +13,10 @@ from databricks.sdk import WorkspaceClient
 # Configuration
 local_service_principal_name = 'local-service-principal'
 group_name = '2025_vibe_coding'
-instance_name = 'mpelletier-demo'
+instance_name = 'apps-demo'
 LAKEBASE_DB_NAME = 'databricks_postgres'
-user_email = 'dc133177-595b-4666-b8ec-175706b5ca6b'
+user_email = '4f63aa4f-5faa-4551-8a06-480a8911ff96'
+# instance-7b967b5a-a77c-4481-9233-a643cdbe980c
 
 # Create workspace client
 w = WorkspaceClient(profile="adb-984752964297111")
@@ -175,7 +176,7 @@ class SpatialService:
         
         sql = f"""
         SELECT COUNT(*) as count
-        FROM fire_near_track ft
+        FROM fires_near_tracks ft
         JOIN wildfires w ON w.id = ft.wid
         {where_clause};
         """
